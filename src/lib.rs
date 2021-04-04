@@ -1,3 +1,5 @@
+mod cli_utils;
+
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -5,23 +7,7 @@ use std::io::BufReader;
 use std::io::BufWriter;
 use std::io::Result;
 
-fn show_choise(choise: &str) -> bool {
-    loop {
-        println!("{} Y/n", choise);
-        let mut input = String::new();
-        std::io::stdin()
-            .read_line(&mut input)
-            .expect("Could not read a line");
-        match input.to_lowercase().trim() {
-            "y" => return true,
-            "n" => return false,
-            _ => {
-                print!("Please enter Y or n. ");
-                continue;
-            }
-        }
-    }
-}
+use self::cli_utils::show_choise;
 
 #[derive(Debug)]
 pub struct KeyChain {
@@ -67,28 +53,30 @@ impl KeyChain {
     }
 
     pub fn add_new_or_show_pass(&mut self, service: &str) {
-        if let Some(user_pass) = self.services.get(service) {
+        if let Some(user_pass) = self.get_pass(service) {
             println!("Your pass: {}", user_pass);
-            if !show_choise("Do you want to update the password?") {
-                return;
+            if show_choise("Do you want to update the password?") {
+                self.add_new(service);
             }
-            self.prompt_for_pass_to_add(service);
         } else {
             println!("Unknown service: {}", service);
-            if !show_choise("Do you want to add new service?") {
-                return;
+            if show_choise("Do you want to add new service?") {
+                self.add_new(service);
             }
-            self.prompt_for_pass_to_add(service);
         }
     }
 
-    fn prompt_for_pass_to_add(&mut self, service: &str) {
-        println!("Enter pass");
+    pub fn get_pass(&mut self, service: &str) -> Option<&String> {
+        self.services.get(service)
+    }
+
+    pub fn add_new(&mut self, service: &str) {
+        println!("Enter the password for service: {}", service);
         let mut input = String::new();
         std::io::stdin()
             .read_line(&mut input)
             .expect("Could not read a line");
         self.services.insert(String::from(service), input);
-        println!("New password added!");
+        println!("Password for service {} added!", service);
     }
 }

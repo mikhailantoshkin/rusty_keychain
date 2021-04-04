@@ -1,3 +1,5 @@
+mod argparse;
+
 use std::string::String;
 
 use ctrlc;
@@ -5,7 +7,11 @@ use rusty_keychain::KeyChain;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use self::argparse::Opt;
+use structopt::StructOpt;
+
 fn main() {
+    let opt = Opt::from_args();
     println!("Enter master pass");
     let mut master_pass = String::new();
     std::io::stdin()
@@ -13,15 +19,31 @@ fn main() {
         .expect("Could not read a line");
 
     let keychain = Arc::new(Mutex::new(KeyChain::new(master_pass.trim()).unwrap()));
+    match opt.service {
+        Some(service) => {
+            if opt.add {
+                keychain.lock().unwrap().add_new(&service)
+            }
+            if let Some(pass) = keychain.lock().unwrap().get_pass(service.trim()) {
+                println!("{}", pass)
+            } else {
+                println!("Unknown service!")
+            }
+        }
+        None => interactive(&keychain),
+    }
+    keychain.lock().unwrap().dump();
+}
+
+fn interactive(keychain: &Arc<Mutex<KeyChain>>) {
     let k = keychain.clone();
 
     ctrlc::set_handler(move || {
-        println!("Hello world!");
+        println!("Please wait, your data is beind processed...");
         k.lock().unwrap().dump();
         std::process::exit(128)
     })
     .unwrap();
-
     loop {
         println!("Enter service name or 'exit' to exit:");
         let mut input = String::new();
@@ -33,5 +55,4 @@ fn main() {
             _ => keychain.lock().unwrap().add_new_or_show_pass(input.trim()),
         }
     }
-    keychain.lock().unwrap().dump();
 }

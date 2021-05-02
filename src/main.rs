@@ -17,7 +17,8 @@ fn main() {
     std::io::stdin()
         .read_line(&mut master_pass)
         .expect("Could not read a line");
-
+    // Only need this because of ctrl+c handler
+    // I wish I knew a better way to do this ¯\_(ツ)_/¯
     let keychain = Arc::new(Mutex::new(KeyChain::new(master_pass.trim()).unwrap()));
     match opt.service {
         Some(service) => {
@@ -36,11 +37,11 @@ fn main() {
 }
 
 fn interactive(keychain: &Arc<Mutex<KeyChain>>) {
-    let k = keychain.clone();
+    let keychain_clone = keychain.clone();
 
     ctrlc::set_handler(move || {
         println!("Please wait, your data is beind processed...");
-        k.lock().unwrap().dump();
+        keychain_clone.lock().unwrap().dump();
         std::process::exit(128)
     })
     .unwrap();

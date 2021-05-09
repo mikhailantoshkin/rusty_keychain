@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use self::cli_utils::show_choice;
 use self::keychain_crypto::{decrypt_file, encrypt_to_file, CryptoError};
 
+type KeyChainResult = std::result::Result<KeyChain, CryptoError>;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct KeyChain {
     services: HashMap<String, String>,
@@ -14,7 +15,7 @@ pub struct KeyChain {
     master_pass: String,
 }
 impl KeyChain {
-    pub fn new(master_pass: &str) -> std::result::Result<KeyChain, CryptoError> {
+    pub fn new(master_pass: &str) -> KeyChainResult {
         decrypt_file("./data/services", master_pass).map_or_else(
             |err| match err {
                 CryptoError::EmptyFileError => Ok(KeyChain::default(master_pass)),
@@ -26,6 +27,15 @@ impl KeyChain {
                 return Ok(keychain);
             },
         )
+    }
+
+    pub fn from_user_input() -> KeyChainResult {
+        let mut master_pass = String::new();
+        println!("Enter master pass");
+        std::io::stdin()
+            .read_line(&mut master_pass)
+            .expect("Could not read a line");
+        KeyChain::new(master_pass.trim())
     }
 
     pub fn default(master_pass: &str) -> KeyChain {

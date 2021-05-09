@@ -1,4 +1,4 @@
-pub fn show_choise(choise: &str) -> bool {
+pub fn show_choice(choise: &str) -> bool {
     loop {
         println!("{} Y/n", choise);
         let mut input = String::new();

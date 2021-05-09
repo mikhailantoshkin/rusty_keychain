@@ -1,23 +1,37 @@
+use rand::Rng;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::BufWriter;
+use std::{error, fmt};
 
-use aes_ctr::cipher::{
-    generic_array::GenericArray,
-    stream::{NewStreamCipher, SyncStreamCipher},
-};
-use aes_ctr::Aes256Ctr;
+use aes;
+use ctr;
+use ctr::cipher::{NewCipher, StreamCipher};
 use ring::digest;
 #[cfg(test)]
 use tempdir::TempDir;
 
-type Result<T> = std::result::Result<T, EmpyFileError>;
+type Result<T> = std::result::Result<T, CryptoError>;
 
+type Aes256Ctr = ctr::Ctr128BE<aes::Aes256>;
 #[derive(Debug, Clone)]
-pub struct EmpyFileError;
+pub enum CryptoError {
+    EmptyFileError,
+    DecryptionError,
+}
 
-// TODO: wrong password errors
+impl fmt::Display for CryptoError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CryptoError::EmptyFileError => write!(f, "File is empty"),
+            CryptoError::DecryptionError => write!(f, "Wrong password"),
+        }
+    }
+}
+
+impl error::Error for CryptoError {}
+
 pub fn decrypt_file(filename: &str, passwd: &str) -> Result<String> {
     let fd = OpenOptions::new()
         .read(true)
@@ -30,26 +44,26 @@ pub fn decrypt_file(filename: &str, passwd: &str) -> Result<String> {
         .read_to_end(&mut data)
         .expect("Could not read the file");
     if data_len == 0 {
-        return Err(EmpyFileError);
+        return Err(CryptoError::EmptyFileError);
     }
-    let key_hash = digest::digest(&digest::SHA256, passwd.as_bytes());
-    let key = GenericArray::from_slice(key_hash.as_ref());
-    let nonce = GenericArray::from_slice(b"and secret nonce");
-    let mut cipher = Aes256Ctr::new(&key, &nonce);
+
+    let key = digest::digest(&digest::SHA256, passwd.as_bytes());
+    let nonce = data.split_off(data.len() - 16);
+
+    let mut cipher = Aes256Ctr::new(key.as_ref().into(), nonce.as_slice().into());
     cipher.apply_keystream(&mut data);
 
-    let ret = String::from_utf8(data).expect("Unable to convert string");
-    Ok(ret)
+    Ok(String::from_utf8(data).map_err(|_| CryptoError::DecryptionError)?)
 }
 
 pub fn encrypt_to_file(filename: &str, passwd: &str, data: String) -> std::result::Result<(), ()> {
-    let key_hash = digest::digest(&digest::SHA256, passwd.as_bytes());
-    let key = GenericArray::from_slice(key_hash.as_ref());
-    let nonce = GenericArray::from_slice(b"and secret nonce");
+    let key = digest::digest(&digest::SHA256, passwd.as_bytes());
+    let nonce: [u8; 16] = rand::thread_rng().gen();
 
-    let mut cipher = Aes256Ctr::new(&key, &nonce);
+    let mut cipher = Aes256Ctr::new(key.as_ref().into(), &nonce.into());
     let mut data: Vec<u8> = Vec::from(data.as_bytes());
     cipher.apply_keystream(data.as_mut_slice());
+    data.extend(&nonce);
     let fd = OpenOptions::new()
         .write(true)
         .create(true)

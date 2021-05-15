@@ -1,10 +1,9 @@
-mod cli_utils;
 mod keychain_crypto;
 
+use rpassword;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use self::cli_utils::show_choice;
 use self::keychain_crypto::{decrypt_file, encrypt_to_file, CryptoError};
 
 type KeyChainResult = std::result::Result<KeyChain, CryptoError>;
@@ -30,11 +29,7 @@ impl KeyChain {
     }
 
     pub fn from_user_input() -> KeyChainResult {
-        let mut master_pass = String::new();
-        println!("Enter master pass");
-        std::io::stdin()
-            .read_line(&mut master_pass)
-            .expect("Could not read a line");
+        let master_pass = rpassword::prompt_password_stdout("Password: ").unwrap();
         KeyChain::new(master_pass.trim())
     }
 
@@ -50,18 +45,8 @@ impl KeyChain {
         encrypt_to_file("./data/services", &self.master_pass, json).unwrap();
     }
 
-    pub fn add_new_or_show_pass(&mut self, service: &str) {
-        if let Some(user_pass) = self.get_pass(service) {
-            println!("Your pass: {}", user_pass);
-            if show_choice("Do you want to update the password?") {
-                self.add_new(service);
-            }
-        } else {
-            println!("Unknown service: {}", service);
-            if show_choice("Do you want to add new service?") {
-                self.add_new(service);
-            }
-        }
+    pub fn get_services(&mut self) -> Vec<&String> {
+        self.services.keys().collect()
     }
 
     pub fn get_pass(&mut self, service: &str) -> Option<&String> {
@@ -70,12 +55,9 @@ impl KeyChain {
 
     pub fn add_new(&mut self, service: &str) {
         println!("Enter the password for service: {}", service);
-        let mut input = String::new();
-        std::io::stdin()
-            .read_line(&mut input)
-            .expect("Could not read a line");
+        let pass = rpassword::prompt_password_stdout("Password: ").unwrap();
         self.services
-            .insert(String::from(service), input.trim().to_string());
+            .insert(String::from(service), pass.trim().to_string());
         println!("Password for service {} added!", service);
     }
 }

@@ -1,16 +1,21 @@
 mod argparse;
+mod config;
 mod shell;
 
 use self::argparse::Opt;
+use self::config::Config;
+use confy;
 use rusty_keychain::KeyChain;
 use structopt::StructOpt;
 
 fn main() {
     let opt = Opt::from_args();
+    let _cfg: Config = confy::load("rusty_keychain").unwrap();
 
     if opt.service.is_none() & !opt.list {
         return shell::start_shell();
     }
+
     let mut keychain = match KeyChain::from_user_input() {
         Ok(k) => k,
         Err(e) => {

@@ -1,9 +1,11 @@
+mod config;
 mod keychain_crypto;
 
 use rpassword;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use self::config::Config;
 use self::keychain_crypto::{decrypt_file, encrypt_to_file, CryptoError};
 
 type KeyChainResult = std::result::Result<KeyChain, CryptoError>;
@@ -12,17 +14,23 @@ pub struct KeyChain {
     services: HashMap<String, String>,
     #[serde(skip)]
     master_pass: String,
+    #[serde(skip)]
+    cfg: Config,
 }
 impl KeyChain {
     pub fn new(master_pass: &str) -> KeyChainResult {
-        decrypt_file("./data/services", master_pass).map_or_else(
+        let cfg: Config = confy::load("rusty_keychain").unwrap();
+
+        decrypt_file(&cfg.local.path, master_pass).map_or_else(
             |err| match err {
                 CryptoError::EmptyFileError => Ok(KeyChain::default(master_pass)),
                 CryptoError::DecryptionError => Err(err),
             },
             |data| {
                 let mut keychain = serde_json::from_str::<KeyChain>(&data).unwrap();
+                // TODO: is serde somehow setting this fields? Weird
                 keychain.master_pass = String::from(master_pass);
+                keychain.cfg = cfg;
                 return Ok(keychain);
             },
         )
@@ -37,12 +45,13 @@ impl KeyChain {
         KeyChain {
             services: HashMap::new(),
             master_pass: String::from(master_pass),
+            cfg: confy::load("rusty_keychain").unwrap(),
         }
     }
 
     pub fn dump(&self) {
         let json = serde_json::to_string(self).expect("Could not dump the data");
-        encrypt_to_file("./data/services", &self.master_pass, json).unwrap();
+        encrypt_to_file(&self.cfg.local.path, &self.master_pass, json).unwrap();
     }
 
     pub fn get_services(&mut self) -> Vec<&String> {

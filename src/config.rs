@@ -1,29 +1,29 @@
+use std::path::PathBuf;
+
+use dirs_next;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+// #[serde(rename_all = "snake_case")]
 pub struct Config {
-    local: Local,
-    google_drive: Option<GoogleDrive>,
+    pub local: Local,
+    pub google_drive: Option<GoogleDrive>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Local {
-    path: String,
+pub struct Local {
+    pub path: PathBuf,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct GoogleDrive {
-    name: String,
-    comfy: bool,
-    foo: i64,
-}
+pub struct GoogleDrive {}
 
 impl Default for Config {
     fn default() -> Self {
+        let mut path = dirs_next::home_dir().unwrap();
+        path.push(".rpswd");
         Config {
-            local: Local {
-                path: String::from("~/.passwords"),
-            },
+            local: Local { path },
             google_drive: None,
         }
     }

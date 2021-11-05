@@ -18,6 +18,8 @@ rand = "0.8.3"
 shrust = "0.0.7"
 rpassword = "5.0"
 confy = "0.4.0"
+dirs-next = "2.0.0"
+shellexpand = "2.1"
 
 [dev-dependencies]
 tempdir = "0.3"

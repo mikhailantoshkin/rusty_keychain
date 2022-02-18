@@ -1,14 +1,14 @@
-use structopt::StructOpt;
+use clap::Parser;
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "rusty_keychain")]
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
 pub struct Opt {
     /// Name of the service. Don't specify to start in interactive mode
     pub service: Option<String>,
     /// Add the specified service into keychain
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub add: bool,
     /// Show all available services and exit
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub list: bool,
 }

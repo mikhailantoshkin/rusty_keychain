@@ -3,11 +3,11 @@ mod config;
 mod shell;
 
 use self::argparse::Opt;
+use clap::Parser;
 use rusty_keychain::KeyChain;
-use structopt::StructOpt;
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     if opt.service.is_none() & !opt.list {
         return shell::start_shell();
